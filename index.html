@@ -173,8 +173,8 @@ tr:hover td{background:#f8fafc}
   border-bottom:0;
 }
 .trip-record h3{
-  margin:0 0 6mm 0;
-  font-size:18px;
+  margin:0 0 4mm 0;
+  font-size:24px;font-weight:900;
   line-height:1.25;
 }
 .trip-info{
@@ -356,10 +356,8 @@ function loadRecords(){
        <div class="trip-record">
          <h3>${i+1}. ${roc(r.date)}</h3>
          <div class="trip-info">
-           <div>行駛：</div>
-           <div>${r.km<15?'未達15公里 = 0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</div>
-           <br>
-           <div>雜費：${r.misc}元</div>
+           <div><b>行駛：</b>${r.km<15?'未達15公里 = 0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</div>
+           <div style="margin-top:8px"><b>雜費：</b>${r.misc}元</div>
          </div>
          ${r.image?'<img class="pdf-map" src="'+r.image+'">':'<div class="no-map">【未上傳地圖】</div>'}
        </div>`;
