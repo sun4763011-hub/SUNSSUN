@@ -2,35 +2,40 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>出差紀錄系統完整版</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出差紀錄系統 V2</title>
 <style>
 body{font-family:"Microsoft JhengHei",sans-serif;background:#eef3f8;margin:0;padding:20px}
-.header{background:#1f5fd6;color:#fff;padding:15px 20px;border-radius:12px}
+.header{background:#2563eb;color:#fff;padding:18px;border-radius:12px}
 .card{background:#fff;margin-top:15px;padding:18px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-input,select{width:100%;padding:8px}
-button{background:#1f5fd6;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer}
-.danger{background:#d93025}
-.success{background:#188038}
+input,select{width:100%;padding:8px;box-sizing:border-box}
+button{padding:10px 16px;border:none;border-radius:6px;color:#fff;cursor:pointer}
+.primary{background:#2563eb}
+.success{background:#16a34a}
+.danger{background:#dc2626}
 table{width:100%;border-collapse:collapse}
-th{background:#1f5fd6;color:#fff}
 th,td{border:1px solid #ddd;padding:8px;text-align:center}
-.preview{max-width:100px;max-height:80px}
-.stat{display:flex;gap:30px;flex-wrap:wrap;font-weight:bold}
-.pdfbox{border:1px dashed #999;padding:15px;margin:10px 0}
+th{background:#2563eb;color:#fff}
+.thumb{width:120px;max-height:70px;object-fit:cover}
+.pdf-item{page-break-inside:avoid;margin-bottom:20px}
+.pdf-map{width:700px;max-width:100%;display:block;margin-top:10px}
+@media print{
+ body *{visibility:hidden}
+ #pdfArea,#pdfArea *{visibility:visible}
+ #pdfArea{position:absolute;left:0;top:0;width:100%}
+ .pdf-item{height:auto}
+ .page-break{page-break-after:always}
+}
 </style>
 </head>
 <body>
 
-<div class="header">
-<h1>🚜 出差紀錄系統（完整版）</h1>
-</div>
+<div class="header"><h1>🚜 出差紀錄系統 V2</h1></div>
 
 <div class="card">
-<h3>新增出差紀錄</h3>
+<h3>新增紀錄</h3>
 <div class="grid">
-
 <div>
 <label>日期</label>
 <input type="date" id="date">
@@ -63,29 +68,11 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center}
 <label>地圖圖片</label>
 <input type="file" id="photo" accept="image/*">
 </div>
-
 </div>
-
 <br>
-<button onclick="addRecord()">新增紀錄</button>
+<button class="primary" onclick="addRecord()">新增紀錄</button>
 <button class="success" onclick="window.print()">匯出PDF</button>
 <button class="danger" onclick="clearAll()">清除全部</button>
-
-</div>
-
-<div class="card">
-<h3>月份查詢</h3>
-<input type="month" id="monthFilter" onchange="render()">
-</div>
-
-<div class="card">
-<div class="stat">
-<div id="count"></div>
-<div id="totalKm"></div>
-<div id="mileageTotal"></div>
-<div id="miscTotal"></div>
-<div id="grandTotal"></div>
-</div>
 </div>
 
 <div class="card">
@@ -97,7 +84,6 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center}
 <th>日期</th>
 <th>交通工具</th>
 <th>公里</th>
-<th>里程費</th>
 <th>雜費</th>
 <th>合計</th>
 <th>地圖</th>
@@ -109,52 +95,48 @@ th,td{border:1px solid #ddd;padding:8px;text-align:center}
 </div>
 
 <div class="card">
-<h3>PDF預覽</h3>
-<div id="pdfPreview"></div>
+<h3>PDF預覽（匯出時僅輸出此區域）</h3>
+<div id="pdfArea"></div>
 </div>
 
 <script>
-let records=JSON.parse(localStorage.getItem("tripFull")||"[]");
+let records=JSON.parse(localStorage.getItem("tripV2")||"[]");
 
 function rocDate(d){
- let x=new Date(d);
+ const x=new Date(d);
  return (x.getFullYear()-1911)+"年"+(x.getMonth()+1)+"月"+x.getDate()+"日";
 }
 
 function save(){
- localStorage.setItem("tripFull",JSON.stringify(records));
+ localStorage.setItem("tripV2",JSON.stringify(records));
 }
 
 function clearAll(){
- if(confirm("確定清除全部資料？")){
-   records=[];
-   save();
-   render();
+ if(confirm("確定清除全部資料?")){
+   records=[]; save(); render();
  }
 }
 
 function addRecord(){
- let file=document.getElementById("photo").files[0];
- let reader=new FileReader();
+ const file=document.getElementById("photo").files[0];
+ const reader=new FileReader();
 
  reader.onload=function(){
-   let km=parseFloat(document.getElementById("km").value||0);
-   let rounded=Math.round(km);
+   const raw=parseFloat(document.getElementById("km").value||0);
+   const km=Math.round(raw);
+   const rate=parseInt(document.getElementById("vehicle").value);
+   const misc=parseInt(document.getElementById("misc").value);
 
-   let rate=parseInt(document.getElementById("vehicle").value);
-   let mileage= rounded<15 ? 0 : rounded*rate;
+   let mileage=0;
+   if(km>=15) mileage=km*rate;
 
-   let item={
+   records.push({
       date:date.value,
       vehicle:rate==2?"機車":"汽車",
-      rate:rate,
-      km:rounded,
-      mileage:mileage,
-      misc:parseInt(misc.value),
+      rate,misc,km,mileage,
       image:reader.result||""
-   };
+   });
 
-   records.push(item);
    save();
    render();
  };
@@ -163,67 +145,55 @@ function addRecord(){
  else{reader.onload();}
 }
 
-function del(i){
+function delRow(i){
  records.splice(i,1);
  save();
  render();
 }
 
 function render(){
-
- let month=document.getElementById("monthFilter").value;
-
- let data=records.filter(r=>{
-   if(!month) return true;
-   return r.date.startsWith(month);
- });
-
- let tb=document.getElementById("tbody");
- let pdf=document.getElementById("pdfPreview");
+ const tb=document.getElementById("tbody");
+ const pdf=document.getElementById("pdfArea");
 
  tb.innerHTML="";
  pdf.innerHTML="";
 
- let kmSum=0,mileageSum=0,miscSum=0,totalSum=0;
+ records.forEach((r,i)=>{
 
- data.forEach((r,i)=>{
-
-   let total=r.mileage+r.misc;
-
-   kmSum+=r.km;
-   mileageSum+=r.mileage;
-   miscSum+=r.misc;
-   totalSum+=total;
+   const total=r.mileage+r.misc;
 
    tb.innerHTML+=`
    <tr>
    <td>${i+1}</td>
    <td>${rocDate(r.date)}</td>
-   <td>${r.vehicle}(${r.rate}元)</td>
+   <td>${r.vehicle}</td>
    <td>${r.km}</td>
-   <td>${r.km<15?"未達15公里=0元":r.km+"×"+r.rate+"="+r.mileage+"元"}</td>
    <td>${r.misc}元</td>
    <td>${total}元</td>
-   <td>${r.image?'<img class="preview" src="'+r.image+'">':''}</td>
-   <td><button class="danger" onclick="del(${records.indexOf(r)})">刪除</button></td>
+   <td>${r.image?'<img class="thumb" src="'+r.image+'">':''}</td>
+   <td><button class="danger" onclick="delRow(${i})">刪除</button></td>
    </tr>`;
 
-   pdf.innerHTML+=`
-   <div class="pdfbox">
-   <h3>${i+1}. ${rocDate(r.date)}</h3>
-   <p>行駛：</p>
-   <p>${r.km<15?'未達15公里，里程費0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</p>
-   <p>雜費：${r.misc}元</p>
-   <p>合計：${total}元</p>
-   ${r.image?'<img style="max-width:350px" src="'+r.image+'">':''}
-   </div>`;
- });
+   pdf.innerHTML += `
+   <div class="pdf-item">
+   <h2>${i+1}. ${rocDate(r.date)}</h2>
 
- count.innerHTML="出差件數："+data.length+" 件";
- totalKm.innerHTML="總公里數："+kmSum+" 公里";
- mileageTotal.innerHTML="里程費合計："+mileageSum+" 元";
- miscTotal.innerHTML="雜費合計："+miscSum+" 元";
- grandTotal.innerHTML="總金額："+totalSum+" 元";
+   <p><strong>行駛：</strong></p>
+
+   ${r.km<15
+     ? '<p>未達15公里<br>里程費：0元</p>'
+     : '<p>'+r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元</p>'
+   }
+
+   <p><strong>雜費：</strong>${r.misc}元</p>
+
+   <p><strong>合計：</strong>${total}元</p>
+
+   ${r.image?'<img class="pdf-map" src="'+r.image+'">':''}
+   </div>
+   ${(i%2===1)?'<div class="page-break"></div>':''}
+   `;
+ });
 }
 
 render();
