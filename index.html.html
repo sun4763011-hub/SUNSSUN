@@ -279,7 +279,7 @@ function loadRecords(){
    if(document.getElementById('pdfPreview')) document.getElementById('pdfPreview').innerHTML='';
    let previewHtml='';
    rows.forEach((r,i)=>{
-     if(i%2===0) previewHtml += `<div class="pdf-page" style="background:#fff;padding:20px;">`;
+     if(i%2===0) previewHtml += `<div class="pdf-page" style="background:#fff;padding:20px;min-height:1040px;page-break-after:always;display:flex;flex-direction:column;">`;
      previewHtml += `<div style="padding:15px;border-bottom:1px solid #ccc"><h3>${i+1}. ${roc(r.date)}</h3><div>行駛：</div><div>${r.km<15?'未達15公里 = 0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</div><br><div>雜費：${r.misc}元</div><br>${r.image?'<img class="pdf-map" src="'+r.image+'">':'<div class="no-map">【未上傳地圖】</div>'}</div>`;
      if(i%2===1 || i===rows.length-1) previewHtml += `</div>`;
      const total=r.mileage+r.misc;
@@ -306,7 +306,7 @@ async function exportPDF(){
  }
  pdf.save('出差紀錄.pdf');
 }
-function printPreview(){const win=window.open('');win.document.write('<html><head><title>列印</title></head><body>'+document.getElementById('pdfPreview').innerHTML+'</body></html>');win.document.close();setTimeout(()=>win.print(),500);}
+function printPreview(){const win=window.open('');win.document.write('<html><head><title>列印</title><style>@page{size:A4;margin:10mm}.pdf-page{page-break-after:always;min-height:250mm}.pdf-page:last-child{page-break-after:auto}</style></head><body>'+document.getElementById('pdfPreview').innerHTML+'</body></html>');win.document.close();setTimeout(()=>win.print(),500);}
 </script>
 </body>
 </html>
