@@ -82,7 +82,7 @@ th{background:#1e5fd8;color:#fff;position:sticky;top:0}
 
 <div class="card">
 <h3>PDF預覽</h3>
-<div id="pdfPreview"></div>
+<div id="pdfPreview" style="background:#fff"></div>
 </div>
 
 <div class="modal" id="modal" onclick="this.style.display='none'">
@@ -93,7 +93,12 @@ th{background:#1e5fd8;color:#fff;position:sticky;top:0}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 let db, editId=null;
-document.getElementById('date').value=new Date().toISOString().split('T')[0];
+
+function setToday(){
+ document.getElementById('date').value=new Date().toISOString().split('T')[0];
+}
+setToday();
+
 
 const req=indexedDB.open('TripProDB',1);
 
@@ -143,6 +148,7 @@ function saveRecord(){
    tx.oncomplete=()=>{
      editId=null;
      msg.innerText='✓ 儲存成功';
+     setToday();
      loadRecords();
    };
  };
@@ -241,14 +247,15 @@ async function exportPDF(){
  const pdf = new jsPDF('p','mm','a4');
 
  for(let i=0;i<pages.length;i++){
-   const canvas = await html2canvas(pages[i],{scale:2,backgroundColor:'#ffffff'});
+   const canvas = await html2canvas(pages[i],{
+ scale:3,
+ backgroundColor:'#ffffff',
+ useCORS:true
+});
    const img = canvas.toDataURL('image/png');
 
-   const w = 190;
-   const h = canvas.height * w / canvas.width;
-
    if(i>0) pdf.addPage();
-   pdf.addImage(img,'PNG',10,10,w,h);
+   pdf.addImage(img,'PNG',0,0,210,297);
  }
 
  pdf.save('出差紀錄.pdf');
