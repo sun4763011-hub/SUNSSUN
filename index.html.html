@@ -84,6 +84,7 @@ th{background:#1e5fd8;color:#fff;position:sticky;top:0}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 let db, editId=null;
 document.getElementById('date').value=new Date().toISOString().split('T')[0];
@@ -116,7 +117,6 @@ function saveRecord(){
    let mileage=km<15?0:km*rate;
 
    const data={
-     id:editId||undefined,
      date:date.value,
      vehicle:rate==2?'機車':'汽車',
      rate,km,mileage,
@@ -127,8 +127,12 @@ function saveRecord(){
    const tx=db.transaction(['records'],'readwrite');
    const store=tx.objectStore('records');
 
-   if(editId) store.put(data);
-   else store.add(data);
+   if(editId){
+     data.id = editId;
+     store.put(data);
+   }else{
+     store.add(data);
+   }
 
    tx.oncomplete=()=>{
      editId=null;
@@ -205,7 +209,51 @@ function delRec(id){
 }
 
 async function exportPDF(){
- alert('此範例已預留PDF功能，可再擴充版面與每頁2筆格式。');
+ const { jsPDF } = window.jspdf;
+ const pdf = new jsPDF('p','mm','a4');
+ let y = 15;
+
+ const tx=db.transaction(['records'],'readonly');
+ const rows = await new Promise(resolve=>{
+   const r=tx.objectStore('records').getAll();
+   r.onsuccess=()=>resolve(r.result);
+ });
+
+ let data = rows;
+ const f = monthFilter.value;
+ if(f) data = rows.filter(x=>x.date.startsWith(f));
+
+ for(let i=0;i<data.length;i++){
+   const r=data[i];
+
+   if(i>0 && i%2===0){
+      pdf.addPage();
+      y=15;
+   }
+
+   pdf.setFontSize(14);
+   pdf.text((i+1)+'. '+roc(r.date),10,y); y+=10;
+
+   pdf.setFontSize(11);
+   let txt=r.km<15 ? '未達15公里 = 0元' : r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元';
+   pdf.text('行駛：',10,y); y+=6;
+   pdf.text(txt,15,y); y+=8;
+
+   pdf.text('雜費：'+r.misc+'元',10,y); y+=8;
+
+   if(r.image){
+      try{
+        pdf.addImage(r.image,'JPEG',10,y,60,40);
+        y+=45;
+      }catch(e){}
+   }
+
+   pdf.line(10,y,190,y);
+   y+=10;
+ }
+
+ const filename=(f?f:'出差紀錄').replace('-','年')+'月出差紀錄.pdf';
+ pdf.save(filename);
 }
 </script>
 </body>
