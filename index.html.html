@@ -2,136 +2,152 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>出差訪視紀錄系統</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出差紀錄系統</title>
 <style>
-body{font-family:Arial,sans-serif;background:#f4f4f4;margin:20px}
-.container{background:#fff;padding:20px;border-radius:10px}
-input,textarea{width:100%;padding:8px;margin:4px 0}
-button{padding:8px 12px;margin:4px}
-table{width:100%;border-collapse:collapse;margin-top:15px}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
-img{max-width:80px}
+body{font-family:Arial,sans-serif;background:#f4f6f9;margin:20px}
+.card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1);margin-bottom:15px}
+h1{color:#1e5ed8}
+label{display:block;margin-top:10px}
+input,select{padding:8px;width:100%;box-sizing:border-box}
+button{padding:10px 15px;margin-top:10px}
+table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ddd;padding:8px;text-align:center}
+th{background:#1e5ed8;color:white}
+.stat{display:flex;gap:20px;flex-wrap:wrap}
+.stat div{font-weight:bold}
 </style>
 </head>
 <body>
-<div class="container">
-<h2>出差訪視紀錄系統</h2>
 
+<h1>🚜 出差紀錄系統</h1>
+
+<div class="card">
+<h3>新增紀錄</h3>
+
+<label>日期</label>
 <input type="date" id="date">
-<input type="text" id="caseNo" placeholder="案件編號">
-<input type="text" id="location" placeholder="訪視地點">
-<input type="number" id="km" placeholder="公里數" oninput="calc()">
-<input type="number" id="other" placeholder="雜費" value="0" oninput="calc()">
-<input type="number" id="mileage" placeholder="里程費" readonly>
-<input type="number" id="total" placeholder="總金額" readonly>
-<textarea id="remark" placeholder="備註"></textarea>
+
+<label>交通工具</label>
+<select id="vehicle">
+<option value="2">機車（2元/公里）</option>
+<option value="3">汽車（3元/公里）</option>
+</select>
+
+<label>公里數</label>
+<input type="number" step="0.1" id="km">
+
+<label>雜費</label>
+<select id="misc">
+<option value="50">50元</option>
+<option value="80">80元</option>
+<option value="100">100元</option>
+<option value="180">180元</option>
+</select>
+
+<label>地圖圖片</label>
 <input type="file" id="photo" accept="image/*">
 
 <button onclick="addRecord()">新增紀錄</button>
-<button onclick="exportPDF()">匯出PDF</button>
+</div>
 
-<table id="tbl">
+<div class="card">
+<h3>月份查詢</h3>
+<input type="month" id="monthFilter" onchange="render()">
+</div>
+
+<div class="card">
+<div class="stat">
+<div id="count">件數:0</div>
+<div id="kms">公里:0</div>
+<div id="money">總金額:0</div>
+</div>
+</div>
+
+<div class="card">
+<table>
 <thead>
 <tr>
-<th>日期</th><th>案號</th><th>地點</th><th>公里</th>
-<th>里程費</th><th>雜費</th><th>總額</th><th>照片</th><th>刪除</th>
+<th>編號</th>
+<th>日期</th>
+<th>交通工具</th>
+<th>公里</th>
+<th>里程費</th>
+<th>雜費</th>
+<th>合計</th>
 </tr>
 </thead>
-<tbody></tbody>
+<tbody id="tbody"></tbody>
 </table>
 </div>
 
 <script>
-let records = JSON.parse(localStorage.getItem("tripRecords")||"[]");
+let records=JSON.parse(localStorage.getItem("tripRecords")||"[]");
 
-function calc(){
- let km=Number(document.getElementById("km").value||0);
- let mileage=km*2;
- document.getElementById("mileage").value=mileage;
- let other=Number(document.getElementById("other").value||0);
- document.getElementById("total").value=mileage+other;
-}
-
-function save(){
- localStorage.setItem("tripRecords",JSON.stringify(records));
-}
-
-function render(){
- let tb=document.querySelector("#tbl tbody");
- tb.innerHTML="";
- records.forEach((r,i)=>{
-   let tr=document.createElement("tr");
-   tr.innerHTML=`
-   <td>${r.date}</td>
-   <td>${r.caseNo}</td>
-   <td>${r.location}</td>
-   <td>${r.km}</td>
-   <td>${r.mileage}</td>
-   <td>${r.other}</td>
-   <td>${r.total}</td>
-   <td>${r.photo?'<img src="'+r.photo+'">':''}</td>
-   <td><button onclick="delRec(${i})">刪除</button></td>`;
-   tb.appendChild(tr);
- });
-}
-
-function delRec(i){
- records.splice(i,1);
- save();
- render();
+function rocDate(d){
+ if(!d) return "";
+ let x=new Date(d);
+ return (x.getFullYear()-1911)+"年"+(x.getMonth()+1)+"月"+x.getDate()+"日";
 }
 
 function addRecord(){
- const file=document.getElementById("photo").files[0];
- const reader=new FileReader();
- reader.onload=function(){
-   records.push({
-     date:date.value,
-     caseNo:caseNo.value,
-     location:location.value,
-     km:km.value,
-     mileage:mileage.value,
-     other:other.value,
-     total:total.value,
-     remark:remark.value,
-     photo:reader.result||""
-   });
-   save();
-   render();
- };
- if(file){ reader.readAsDataURL(file); }
- else{
-   reader.onload();
- }
-}
+ let km=parseFloat(document.getElementById('km').value||0);
+ let rate=parseInt(document.getElementById('vehicle').value);
 
-async function exportPDF(){
- const { jsPDF } = window.jspdf;
- const doc = new jsPDF();
- let y=15;
- doc.setFontSize(14);
- doc.text("出差訪視紀錄報表",10,y);
- y+=10;
+ let rounded=Math.round(km);
 
- records.forEach((r,idx)=>{
-   doc.setFontSize(10);
-   doc.text(
-    `${idx+1}. ${r.date} | ${r.caseNo} | ${r.location} | 總額:${r.total}`,
-    10,y
-   );
-   y+=8;
-   if(y>270){
-      doc.addPage();
-      y=15;
-   }
+ let mileage= rounded<15 ? 0 : rounded*rate;
+
+ records.push({
+  date:date.value,
+  vehicle:rate==2?'機車':'汽車',
+  rate:rate,
+  km:km,
+  rounded:rounded,
+  mileage:mileage,
+  misc:parseInt(misc.value)
  });
 
- doc.save("出差訪視紀錄.pdf");
+ localStorage.setItem("tripRecords",JSON.stringify(records));
+ render();
+}
+
+function render(){
+ let tb=document.getElementById('tbody');
+ tb.innerHTML='';
+
+ let filter=document.getElementById('monthFilter').value;
+
+ let data=records.filter(r=>{
+   if(!filter) return true;
+   return r.date.startsWith(filter);
+ });
+
+ let totalKm=0,totalMoney=0;
+
+ data.forEach((r,i)=>{
+   totalKm+=r.rounded;
+   totalMoney+=r.mileage+r.misc;
+
+   tb.innerHTML+=`
+   <tr>
+   <td>${i+1}</td>
+   <td>${rocDate(r.date)}</td>
+   <td>${r.vehicle}(${r.rate}元)</td>
+   <td>${r.rounded}</td>
+   <td>${r.rounded<15?'未達15公里=0元':r.rounded+'×'+r.rate+'='+r.mileage+'元'}</td>
+   <td>${r.misc}</td>
+   <td>${r.mileage+r.misc}</td>
+   </tr>`;
+ });
+
+ count.innerHTML='件數:'+data.length;
+ kms.innerHTML='公里:'+totalKm;
+ money.innerHTML='總金額:'+totalMoney;
 }
 
 render();
 </script>
+
 </body>
 </html>
