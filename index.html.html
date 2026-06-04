@@ -2,120 +2,146 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>出差紀錄系統 V3</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出差紀錄系統</title>
 <style>
-body{font-family:Microsoft JhengHei,sans-serif;background:#eef4ff;margin:20px}
-h1{background:#2563eb;color:#fff;padding:15px;border-radius:10px}
-.card{background:#fff;padding:15px;border-radius:10px;margin:12px 0;box-shadow:0 2px 6px rgba(0,0,0,.1)}
-input,select{padding:8px;width:100%;box-sizing:border-box}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
-button{padding:10px 15px;margin:5px;border:none;border-radius:6px;color:#fff;cursor:pointer}
-.primary{background:#2563eb}.success{background:#16a34a}.danger{background:#dc2626}
+body{font-family:"Microsoft JhengHei",sans-serif;background:#eef2f7;margin:20px}
+h1{background:#1e5fd8;color:#fff;padding:15px;border-radius:10px}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+input,select{width:100%;padding:8px;box-sizing:border-box}
+button{padding:10px 15px;margin-top:10px}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ddd;padding:8px;text-align:center}
-th{background:#2563eb;color:#fff}
-img.thumb{width:120px;max-height:80px}
+th{background:#1e5fd8;color:#fff}
+.pdf-item{margin:20px 0;padding-bottom:20px;border-bottom:1px solid #ccc;page-break-inside:avoid}
+.pdf-item img{max-width:700px;width:100%}
+@media print{
+ body *{visibility:hidden}
+ #pdfArea,#pdfArea *{visibility:visible}
+ #pdfArea{position:absolute;left:0;top:0;width:100%}
+ .pdf-item:nth-child(2n){page-break-after:always}
+}
 </style>
 </head>
 <body>
-<h1>🚜 出差紀錄系統 V3</h1>
+<h1>出差紀錄系統</h1>
 
 <div class="card">
 <div class="grid">
-<div><label>案件名稱</label><input id="caseName"></div>
-<div><label>日期</label><input type="date" id="date"></div>
+<div><label>民國年</label><select id="y"></select></div>
+<div><label>月</label><select id="m"></select></div>
+<div><label>日</label><select id="d"></select></div>
 <div><label>交通工具</label>
-<select id="vehicle">
-<option value="2">機車(2元)</option>
-<option value="3">汽車(3元)</option>
-</select></div>
-<div><label>公里數</label><input type="number" step="0.1" id="km"></div>
-<div><label>雜費</label>
-<select id="misc">
-<option>50</option><option>80</option><option>100</option><option>180</option>
-</select></div>
-<div><label>地圖圖片</label><input type="file" id="photo"></div>
+<select id="vehicle"><option value="2">機車(2元/公里)</option><option value="3">汽車(3元/公里)</option></select>
 </div>
-<button class="primary" onclick="addRec()">新增</button>
-<button class="success" onclick="downloadBackup()">備份JSON</button>
-<input type="file" id="restore" onchange="restoreBackup()">
+<div><label>公里數</label><input id="km" type="number" step="0.1"></div>
+</div>
+
+<label>雜費</label>
+<select id="misc">
+<option value="50">50元</option>
+<option value="80">80元</option>
+<option value="100">100元</option>
+<option value="180">180元</option>
+</select>
+
+<label>地圖圖片</label>
+<input type="file" id="photo" accept="image/*">
+
+<button onclick="addRec()">新增紀錄</button>
 </div>
 
 <div class="card">
+<h3>月份查詢 / 匯出</h3>
+<div class="grid">
+<div><select id="fy"></select></div>
+<div><select id="fm"></select></div>
+</div>
+<button onclick="render()">查詢</button>
+<button onclick="window.print()">匯出PDF</button>
+</div>
+
+<div class="card">
+<div id="count"></div>
 <table>
-<thead><tr><th>編號</th><th>案件</th><th>日期</th><th>合計</th><th>地圖</th><th>刪除</th></tr></thead>
+<thead>
+<tr>
+<th>編號</th><th>日期</th><th>交通工具</th><th>公里</th><th>里程費</th><th>雜費</th><th>合計</th>
+</tr>
+</thead>
 <tbody id="tb"></tbody>
 </table>
 </div>
 
+<div id="pdfArea" class="card">
+<div id="pdfContent"></div>
+</div>
+
 <script>
-let data=JSON.parse(localStorage.getItem('tripV3')||'[]');
-
-function roc(d){
- let x=new Date(d);
- return (x.getFullYear()-1911)+'年'+(x.getMonth()+1)+'月'+x.getDate()+'日';
+for(let i=110;i<=130;i++){
+ y.innerHTML+=`<option>${i}</option>`;
+ fy.innerHTML+=`<option>${i}</option>`;
 }
-
-function save(){
- localStorage.setItem('tripV3',JSON.stringify(data));
- render();
+for(let i=1;i<=12;i++){
+ m.innerHTML+=`<option>${i}</option>`;
+ fm.innerHTML+=`<option>${i}</option>`;
 }
+for(let i=1;i<=31;i++) d.innerHTML+=`<option>${i}</option>`;
+
+let data=JSON.parse(localStorage.getItem("tripOfficial")||"[]");
+
+function save(){localStorage.setItem("tripOfficial",JSON.stringify(data));}
 
 function addRec(){
- let f=document.getElementById('photo').files[0];
+ let f=photo.files[0];
  let r=new FileReader();
  r.onload=function(){
-   let km=Math.round(parseFloat(document.getElementById('km').value||0));
-   let rate=parseInt(document.getElementById('vehicle').value);
-   let mileage=km<15?0:km*rate;
-   let misc=parseInt(document.getElementById('misc').value);
+   let k=Math.round(parseFloat(km.value||0));
+   let rate=parseInt(vehicle.value);
+   let mileage=k<15?0:k*rate;
    data.push({
-      caseName:caseName.value,
-      date:date.value,
-      km,misc,rate,
-      total:mileage+misc,
-      image:r.result||''
+     rocYear:y.value,month:m.value,
+     date:`${y.value}年${m.value}月${d.value}日`,
+     vehicle:rate==2?'機車':'汽車',
+     rate,km:k,mileage,
+     misc:parseInt(misc.value),
+     img:r.result||""
    });
-   save();
+   save(); render();
  };
- if(f){r.readAsDataURL(f)} else {r.onload()}
+ if(f) r.readAsDataURL(f); else r.onload();
 }
-
-function del(i){data.splice(i,1);save();}
 
 function render(){
+ let yy=fy.value, mm=fm.value;
+ let rows=data.filter(x=>!yy || (x.rocYear==yy && x.month==mm));
+
  tb.innerHTML='';
- data.forEach((x,i)=>{
-  tb.innerHTML+=`<tr>
-  <td>${i+1}</td>
-  <td>${x.caseName}</td>
-  <td>${roc(x.date)}</td>
-  <td>${x.total}元</td>
-  <td>${x.image?'<img class="thumb" src="'+x.image+'">':''}</td>
-  <td><button class="danger" onclick="del(${i})">刪除</button></td>
-  </tr>`;
+ pdfContent.innerHTML='';
+ count.innerHTML='共 '+rows.length+' 筆資料';
+
+ rows.forEach((x,i)=>{
+   let total=x.mileage+x.misc;
+   tb.innerHTML+=`<tr>
+   <td>${i+1}</td>
+   <td>${x.date}</td>
+   <td>${x.vehicle}</td>
+   <td>${x.km}</td>
+   <td>${x.km<15?'未達15公里=0元':x.km+'×'+x.rate+'='+x.mileage+'元'}</td>
+   <td>${x.misc}元</td>
+   <td>${total}元</td></tr>`;
+
+   pdfContent.innerHTML+=`
+   <div class="pdf-item">
+   <h2>${i+1}. ${x.date}</h2>
+   <p>${x.km<15?'未達15公里，里程費0元':x.km+'公里 × '+x.rate+'元 = '+x.mileage+'元'}</p>
+   <p>雜費：${x.misc}元</p>
+   <p>合計：${total}元</p>
+   ${x.img?'<img src="'+x.img+'">':''}
+   </div>`;
  });
 }
-
-function downloadBackup(){
- let blob=new Blob([JSON.stringify(data)],{type:'application/json'});
- let a=document.createElement('a');
- a.href=URL.createObjectURL(blob);
- a.download='backup.json';
- a.click();
-}
-
-function restoreBackup(){
- let f=document.getElementById('restore').files[0];
- let r=new FileReader();
- r.onload=function(){
-  data=JSON.parse(r.result);
-  save();
- };
- r.readAsText(f);
-}
-
 render();
 </script>
 </body>
