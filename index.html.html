@@ -2,202 +2,121 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>出差紀錄系統 V2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出差紀錄系統 V3</title>
 <style>
-body{font-family:"Microsoft JhengHei",sans-serif;background:#eef3f8;margin:0;padding:20px}
-.header{background:#2563eb;color:#fff;padding:18px;border-radius:12px}
-.card{background:#fff;margin-top:15px;padding:18px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-input,select{width:100%;padding:8px;box-sizing:border-box}
-button{padding:10px 16px;border:none;border-radius:6px;color:#fff;cursor:pointer}
-.primary{background:#2563eb}
-.success{background:#16a34a}
-.danger{background:#dc2626}
+body{font-family:Microsoft JhengHei,sans-serif;background:#eef4ff;margin:20px}
+h1{background:#2563eb;color:#fff;padding:15px;border-radius:10px}
+.card{background:#fff;padding:15px;border-radius:10px;margin:12px 0;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+input,select{padding:8px;width:100%;box-sizing:border-box}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+button{padding:10px 15px;margin:5px;border:none;border-radius:6px;color:#fff;cursor:pointer}
+.primary{background:#2563eb}.success{background:#16a34a}.danger{background:#dc2626}
 table{width:100%;border-collapse:collapse}
 th,td{border:1px solid #ddd;padding:8px;text-align:center}
 th{background:#2563eb;color:#fff}
-.thumb{width:120px;max-height:70px;object-fit:cover}
-.pdf-item{page-break-inside:avoid;margin-bottom:20px}
-.pdf-map{width:700px;max-width:100%;display:block;margin-top:10px}
-@media print{
- body *{visibility:hidden}
- #pdfArea,#pdfArea *{visibility:visible}
- #pdfArea{position:absolute;left:0;top:0;width:100%}
- .pdf-item{height:auto}
- .page-break{page-break-after:always}
-}
+img.thumb{width:120px;max-height:80px}
 </style>
 </head>
 <body>
-
-<div class="header"><h1>🚜 出差紀錄系統 V2</h1></div>
+<h1>🚜 出差紀錄系統 V3</h1>
 
 <div class="card">
-<h3>新增紀錄</h3>
 <div class="grid">
-<div>
-<label>日期</label>
-<input type="date" id="date">
-</div>
-
-<div>
-<label>交通工具</label>
+<div><label>案件名稱</label><input id="caseName"></div>
+<div><label>日期</label><input type="date" id="date"></div>
+<div><label>交通工具</label>
 <select id="vehicle">
-<option value="2">機車（2元/公里）</option>
-<option value="3">汽車（3元/公里）</option>
-</select>
-</div>
-
-<div>
-<label>公里數</label>
-<input type="number" step="0.1" id="km">
-</div>
-
-<div>
-<label>雜費</label>
+<option value="2">機車(2元)</option>
+<option value="3">汽車(3元)</option>
+</select></div>
+<div><label>公里數</label><input type="number" step="0.1" id="km"></div>
+<div><label>雜費</label>
 <select id="misc">
-<option value="50">50元</option>
-<option value="80">80元</option>
-<option value="100">100元</option>
-<option value="180">180元</option>
-</select>
+<option>50</option><option>80</option><option>100</option><option>180</option>
+</select></div>
+<div><label>地圖圖片</label><input type="file" id="photo"></div>
 </div>
-
-<div>
-<label>地圖圖片</label>
-<input type="file" id="photo" accept="image/*">
-</div>
-</div>
-<br>
-<button class="primary" onclick="addRecord()">新增紀錄</button>
-<button class="success" onclick="window.print()">匯出PDF</button>
-<button class="danger" onclick="clearAll()">清除全部</button>
+<button class="primary" onclick="addRec()">新增</button>
+<button class="success" onclick="downloadBackup()">備份JSON</button>
+<input type="file" id="restore" onchange="restoreBackup()">
 </div>
 
 <div class="card">
-<h3>出差紀錄列表</h3>
 <table>
-<thead>
-<tr>
-<th>編號</th>
-<th>日期</th>
-<th>交通工具</th>
-<th>公里</th>
-<th>雜費</th>
-<th>合計</th>
-<th>地圖</th>
-<th>刪除</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
+<thead><tr><th>編號</th><th>案件</th><th>日期</th><th>合計</th><th>地圖</th><th>刪除</th></tr></thead>
+<tbody id="tb"></tbody>
 </table>
 </div>
 
-<div class="card">
-<h3>PDF預覽（匯出時僅輸出此區域）</h3>
-<div id="pdfArea"></div>
-</div>
-
 <script>
-let records=JSON.parse(localStorage.getItem("tripV2")||"[]");
+let data=JSON.parse(localStorage.getItem('tripV3')||'[]');
 
-function rocDate(d){
- const x=new Date(d);
- return (x.getFullYear()-1911)+"年"+(x.getMonth()+1)+"月"+x.getDate()+"日";
+function roc(d){
+ let x=new Date(d);
+ return (x.getFullYear()-1911)+'年'+(x.getMonth()+1)+'月'+x.getDate()+'日';
 }
 
 function save(){
- localStorage.setItem("tripV2",JSON.stringify(records));
-}
-
-function clearAll(){
- if(confirm("確定清除全部資料?")){
-   records=[]; save(); render();
- }
-}
-
-function addRecord(){
- const file=document.getElementById("photo").files[0];
- const reader=new FileReader();
-
- reader.onload=function(){
-   const raw=parseFloat(document.getElementById("km").value||0);
-   const km=Math.round(raw);
-   const rate=parseInt(document.getElementById("vehicle").value);
-   const misc=parseInt(document.getElementById("misc").value);
-
-   let mileage=0;
-   if(km>=15) mileage=km*rate;
-
-   records.push({
-      date:date.value,
-      vehicle:rate==2?"機車":"汽車",
-      rate,misc,km,mileage,
-      image:reader.result||""
-   });
-
-   save();
-   render();
- };
-
- if(file){reader.readAsDataURL(file);}
- else{reader.onload();}
-}
-
-function delRow(i){
- records.splice(i,1);
- save();
+ localStorage.setItem('tripV3',JSON.stringify(data));
  render();
 }
 
+function addRec(){
+ let f=document.getElementById('photo').files[0];
+ let r=new FileReader();
+ r.onload=function(){
+   let km=Math.round(parseFloat(document.getElementById('km').value||0));
+   let rate=parseInt(document.getElementById('vehicle').value);
+   let mileage=km<15?0:km*rate;
+   let misc=parseInt(document.getElementById('misc').value);
+   data.push({
+      caseName:caseName.value,
+      date:date.value,
+      km,misc,rate,
+      total:mileage+misc,
+      image:r.result||''
+   });
+   save();
+ };
+ if(f){r.readAsDataURL(f)} else {r.onload()}
+}
+
+function del(i){data.splice(i,1);save();}
+
 function render(){
- const tb=document.getElementById("tbody");
- const pdf=document.getElementById("pdfArea");
-
- tb.innerHTML="";
- pdf.innerHTML="";
-
- records.forEach((r,i)=>{
-
-   const total=r.mileage+r.misc;
-
-   tb.innerHTML+=`
-   <tr>
-   <td>${i+1}</td>
-   <td>${rocDate(r.date)}</td>
-   <td>${r.vehicle}</td>
-   <td>${r.km}</td>
-   <td>${r.misc}元</td>
-   <td>${total}元</td>
-   <td>${r.image?'<img class="thumb" src="'+r.image+'">':''}</td>
-   <td><button class="danger" onclick="delRow(${i})">刪除</button></td>
-   </tr>`;
-
-   pdf.innerHTML += `
-   <div class="pdf-item">
-   <h2>${i+1}. ${rocDate(r.date)}</h2>
-
-   <p><strong>行駛：</strong></p>
-
-   ${r.km<15
-     ? '<p>未達15公里<br>里程費：0元</p>'
-     : '<p>'+r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元</p>'
-   }
-
-   <p><strong>雜費：</strong>${r.misc}元</p>
-
-   <p><strong>合計：</strong>${total}元</p>
-
-   ${r.image?'<img class="pdf-map" src="'+r.image+'">':''}
-   </div>
-   ${(i%2===1)?'<div class="page-break"></div>':''}
-   `;
+ tb.innerHTML='';
+ data.forEach((x,i)=>{
+  tb.innerHTML+=`<tr>
+  <td>${i+1}</td>
+  <td>${x.caseName}</td>
+  <td>${roc(x.date)}</td>
+  <td>${x.total}元</td>
+  <td>${x.image?'<img class="thumb" src="'+x.image+'">':''}</td>
+  <td><button class="danger" onclick="del(${i})">刪除</button></td>
+  </tr>`;
  });
+}
+
+function downloadBackup(){
+ let blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+ let a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='backup.json';
+ a.click();
+}
+
+function restoreBackup(){
+ let f=document.getElementById('restore').files[0];
+ let r=new FileReader();
+ r.onload=function(){
+  data=JSON.parse(r.result);
+  save();
+ };
+ r.readAsText(f);
 }
 
 render();
 </script>
-
 </body>
 </html>
