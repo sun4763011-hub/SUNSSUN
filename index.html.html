@@ -6,35 +6,24 @@
 <title>出差紀錄系統</title>
 <style>
 body{font-family:"Microsoft JhengHei",sans-serif;background:#eef4fb;margin:0;padding:20px}
-.header{background:#1e5fd8;color:#fff;padding:18px;border-radius:12px;font-size:28px;font-weight:bold}
-.card{background:#fff;margin-top:15px;padding:20px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,.08)}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
-label{font-weight:bold;display:block;margin-bottom:5px}
-input,select{width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;box-sizing:border-box}
-button{background:#1e5fd8;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;margin-right:8px}
-button:hover{opacity:.9}
+h1{background:#1e5fd8;color:#fff;padding:15px;border-radius:10px}
+.card{background:#fff;padding:18px;margin:15px 0;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+input,select{width:100%;padding:8px;box-sizing:border-box}
+button{padding:10px 15px;margin-top:10px}
 table{width:100%;border-collapse:collapse}
+th,td{border:1px solid #ddd;padding:8px;text-align:center}
 th{background:#1e5fd8;color:#fff}
-th,td{padding:10px;border:1px solid #ddd;text-align:center}
-tr:nth-child(even){background:#f8fbff}
-tr:hover{background:#e8f1ff}
-.thumb{max-width:80px;max-height:60px}
-@media print{
- body *{visibility:hidden}
- #pdfArea,#pdfArea *{visibility:visible}
- #pdfArea{position:absolute;left:0;top:0;width:100%}
- .pdfItem:nth-child(2n){page-break-after:always}
-}
-.pdfItem{margin-bottom:30px;padding-bottom:20px;border-bottom:1px solid #ccc}
-.pdfItem img{width:100%;max-width:700px}
+img.thumb{max-width:90px;max-height:70px}
+.pdf-item{margin:20px 0;padding-bottom:20px;border-bottom:1px solid #ccc}
+.pdf-item img{max-width:700px;width:100%}
 </style>
 </head>
 <body>
 
-<div class="header">出差紀錄系統</div>
+<h1>出差紀錄系統</h1>
 
 <div class="card">
-<h3>新增出差紀錄</h3>
 <div class="grid">
 <div>
 <label>日期</label>
@@ -51,7 +40,7 @@ tr:hover{background:#e8f1ff}
 
 <div>
 <label>公里數</label>
-<input type="number" step="0.1" id="km">
+<input type="number" id="km" step="0.1">
 </div>
 
 <div>
@@ -66,150 +55,140 @@ tr:hover{background:#e8f1ff}
 </div>
 
 <br>
-
 <label>地圖圖片</label>
 <input type="file" id="photo" accept="image/*">
 
-<br><br>
-
-<button onclick="addRecord()">新增紀錄</button>
-</div>
-
-<div class="card">
-<h3>月份查詢 / PDF匯出</h3>
-<div class="grid">
-<div>
-<label>年份</label>
-<select id="filterYear"></select>
-</div>
-<div>
-<label>月份</label>
-<select id="filterMonth"></select>
-</div>
-</div>
 <br>
-<button onclick="render()">查詢</button>
-<button onclick="window.print()">匯出PDF</button>
-<div id="resultCount" style="margin-top:10px;font-weight:bold"></div>
+<button id="addBtn">新增紀錄</button>
+<span id="msg"></span>
 </div>
 
 <div class="card">
-<h3>出差紀錄</h3>
+<label>查詢月份</label>
+<input type="month" id="monthFilter">
+<button id="searchBtn">查詢</button>
+<div id="count"></div>
+</div>
+
+<div class="card">
 <table>
 <thead>
 <tr>
 <th>編號</th>
 <th>日期</th>
-<th>交通工具</th>
-<th>公里數</th>
+<th>工具</th>
+<th>公里</th>
 <th>里程費</th>
 <th>雜費</th>
 <th>合計</th>
-<th>地圖</th>
+<th>圖片</th>
 </tr>
 </thead>
 <tbody id="tbody"></tbody>
 </table>
 </div>
 
-<div id="pdfArea" class="card">
+<div class="card">
+<h3>PDF內容</h3>
 <div id="pdfContent"></div>
 </div>
 
 <script>
 const today=new Date();
-tripDate.value=today.toISOString().split('T')[0];
+document.getElementById('tripDate').value=today.toISOString().split('T')[0];
 
-for(let y=110;y<=130;y++){
- filterYear.innerHTML+=`<option value="${y}">${y}年</option>`;
+let records=JSON.parse(localStorage.getItem('tripRecordsOfficial')||'[]');
+
+function rocDate(d){
+ const x=new Date(d);
+ return (x.getFullYear()-1911)+'年'+(x.getMonth()+1)+'月'+x.getDate()+'日';
 }
-for(let m=1;m<=12;m++){
- filterMonth.innerHTML+=`<option value="${m}">${m}月</option>`;
-}
 
-let records=JSON.parse(localStorage.getItem('tripSystemData')||'[]');
-
-function rocDate(dateStr){
- let d=new Date(dateStr);
- return (d.getFullYear()-1911)+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日';
+function save(){
+ localStorage.setItem('tripRecordsOfficial',JSON.stringify(records));
 }
 
 function addRecord(){
- const file=photo.files[0];
- const reader=new FileReader();
+ const kmVal=parseFloat(document.getElementById('km').value||0);
+ const rounded=Math.round(kmVal);
+ const rate=parseInt(document.getElementById('vehicle').value);
+ const mileage=rounded<15?0:rounded*rate;
 
- reader.onload=function(e){
-   const kmValue=parseFloat(km.value||0);
-   const rounded=Math.round(kmValue);
-   const rate=parseInt(vehicle.value);
-   const mileage=rounded<15?0:rounded*rate;
+ const file=document.getElementById('photo').files[0];
 
+ function finish(imgData){
    records.push({
-      date:tripDate.value,
-      vehicle:rate==2?'機車':'汽車',
+      date:document.getElementById('tripDate').value,
+      vehicle:rate===2?'機車':'汽車',
       rate:rate,
       km:rounded,
       mileage:mileage,
-      misc:parseInt(misc.value),
-      image:e.target ? e.target.result : ''
+      misc:parseInt(document.getElementById('misc').value),
+      image:imgData||''
    });
 
-   localStorage.setItem('tripSystemData',JSON.stringify(records));
+   save();
    render();
+   document.getElementById('msg').innerText=' ✓ 新增成功';
+   setTimeout(()=>document.getElementById('msg').innerText='',2000);
+ }
 
-   km.value='';
-   photo.value='';
- };
-
- if(file){reader.readAsDataURL(file);}
- else{reader.onload({target:{result:''}});}
+ if(file){
+   const reader=new FileReader();
+   reader.onload=e=>finish(e.target.result);
+   reader.readAsDataURL(file);
+ }else{
+   finish('');
+ }
 }
 
 function render(){
- const fy=filterYear.value;
- const fm=filterMonth.value;
+ const filter=document.getElementById('monthFilter').value;
 
- const list=records.filter(r=>{
-      const d=new Date(r.date);
-      const y=d.getFullYear()-1911;
-      const m=d.getMonth()+1;
-      return y==fy && m==fm;
- });
+ let data=records;
+ if(filter){
+   data=records.filter(r=>r.date.startsWith(filter));
+ }
 
- tbody.innerHTML='';
- pdfContent.innerHTML='';
+ document.getElementById('count').innerText='共 '+data.length+' 筆資料';
 
- resultCount.innerHTML='共 '+list.length+' 筆資料';
+ const tb=document.getElementById('tbody');
+ const pdf=document.getElementById('pdfContent');
 
- list.forEach((r,i)=>{
-    const total=r.mileage+r.misc;
+ tb.innerHTML='';
+ pdf.innerHTML='';
 
-    tbody.innerHTML+=`
-    <tr>
-      <td>${i+1}</td>
-      <td>${rocDate(r.date)}</td>
-      <td>${r.vehicle}</td>
-      <td>${r.km}</td>
-      <td>${r.km<15?'未達15公里=0元':r.km+'×'+r.rate+'='+r.mileage+'元'}</td>
-      <td>${r.misc}元</td>
-      <td>${total}元</td>
-      <td>${r.image?'<img class="thumb" src="'+r.image+'">':''}</td>
-    </tr>`;
+ data.forEach((r,i)=>{
+   const total=r.mileage+r.misc;
 
-    pdfContent.innerHTML+=`
-    <div class="pdfItem">
-      <h2>${i+1}. ${rocDate(r.date)}</h2>
-      <p>${r.km<15?'未達15公里，里程費0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</p>
-      <p>雜費：${r.misc}元</p>
-      <p>合計：${total}元</p>
-      ${r.image?'<img src="'+r.image+'">':''}
-    </div>`;
+   tb.innerHTML += `
+   <tr>
+   <td>${i+1}</td>
+   <td>${rocDate(r.date)}</td>
+   <td>${r.vehicle}</td>
+   <td>${r.km}</td>
+   <td>${r.km<15?'未達15公里=0元':r.km+'×'+r.rate+'='+r.mileage+'元'}</td>
+   <td>${r.misc}元</td>
+   <td>${total}元</td>
+   <td>${r.image?'<img class="thumb" src="'+r.image+'">':''}</td>
+   </tr>`;
+
+   pdf.innerHTML += `
+   <div class="pdf-item">
+   <h2>${i+1}. ${rocDate(r.date)}</h2>
+   <p>${r.km<15?'未達15公里，里程費0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</p>
+   <p>雜費：${r.misc}元</p>
+   <p>合計：${total}元</p>
+   ${r.image?'<img src="'+r.image+'">':''}
+   </div>`;
  });
 }
 
-filterYear.value=today.getFullYear()-1911;
-filterMonth.value=today.getMonth()+1;
+document.getElementById('addBtn').addEventListener('click',addRecord);
+document.getElementById('searchBtn').addEventListener('click',render);
+
 render();
 </script>
+
 </body>
 </html>
