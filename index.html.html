@@ -79,6 +79,12 @@ th{background:#1e5fd8;color:#fff;position:sticky;top:0}
 </table>
 </div>
 
+
+<div class="card">
+<h3>PDF預覽</h3>
+<div id="pdfPreview"></div>
+</div>
+
 <div class="modal" id="modal" onclick="this.style.display='none'">
 <img id="bigImg">
 </div>
@@ -163,8 +169,19 @@ function loadRecords(){
    count.innerHTML='共 '+rows.length+' 筆';
 
    tb.innerHTML='';
+   if(document.getElementById('pdfPreview')) document.getElementById('pdfPreview').innerHTML='';
 
    rows.forEach((r,i)=>{
+     if(document.getElementById('pdfPreview')){
+       document.getElementById('pdfPreview').innerHTML += `<div style="padding:15px;border-bottom:1px solid #ccc">
+       <h3>${i+1}. ${roc(r.date)}</h3>
+       <div>行駛：</div>
+       <div>${r.km<15?'未達15公里 = 0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</div>
+       <br>
+       <div>雜費：${r.misc}元</div><br>
+       ${r.image?'<img src="'+r.image+'" style="width:16.98cm;height:10.78cm;object-fit:cover">':''}
+       </div>`;
+     }
      const total=r.mileage+r.misc;
 
      tb.innerHTML+=`
