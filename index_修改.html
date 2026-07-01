@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>出差紀錄系統</title>
+<style>
+:root{
+  --primary:#2563eb;
+  --primary2:#0f766e;
+  --dark:#0f172a;
+  --muted:#64748b;
+  --line:#e2e8f0;
+  --card:rgba(255,255,255,.92);
+  --shadow:0 18px 45px rgba(15,23,42,.12);
+}
+*{box-sizing:border-box}
+body{
+  font-family:"Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  margin:0;
+  min-height:100vh;
+  color:var(--dark);
+  background:
+    radial-gradient(circle at top left, rgba(37,99,235,.22), transparent 34%),
+    radial-gradient(circle at top right, rgba(15,118,110,.18), transparent 30%),
+    linear-gradient(135deg,#f8fafc 0%,#eef4ff 45%,#f0fdfa 100%);
+  padding:26px;
+}
+body.locked{overflow:hidden}
+.login-screen{
+  position:fixed;
+  inset:0;
+  z-index:9999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(59,130,246,.38), transparent 34%),
+    radial-gradient(circle at 80% 20%, rgba(20,184,166,.28), transparent 30%),
+    linear-gradient(135deg,#0f172a,#1e3a8a 58%,#0f766e);
+}
+.login-box{
+  width:min(430px,100%);
+  background:rgba(255,255,255,.96);
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:28px;
+  padding:34px;
+  box-shadow:0 30px 90px rgba(0,0,0,.35);
+  text-align:center;
+}
+.login-icon{
+  width:68px;height:68px;margin:0 auto 16px;
+  border-radius:22px;
+  display:flex;align-items:center;justify-content:center;
+  color:white;font-size:34px;font-weight:900;
+  background:linear-gradient(135deg,var(--primary),var(--primary2));
+  box-shadow:0 14px 30px rgba(37,99,235,.35);
+}
+.login-box h1{margin:0;font-size:30px;letter-spacing:1px}
+.login-box p{color:var(--muted);margin:10px 0 22px}
+.login-box input{
+  text-align:center;
+  font-size:26px;
+  letter-spacing:8px;
+  font-weight:800;
+  border-radius:16px;
+  padding:15px;
+}
+.login-error{min-height:24px;color:#dc2626;font-weight:700;margin-top:12px}
+.app{max-width:1280px;margin:0 auto}
+.header{
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(135deg,#1d4ed8,#2563eb 55%,#0f766e);
+  color:#fff;
+  padding:28px 30px;
+  border-radius:28px;
+  box-shadow:var(--shadow);
+  margin-bottom:18px;
+}
+.header:after{
+  content:"";
+  position:absolute;
+  right:-60px;top:-70px;
+  width:230px;height:230px;
+  border-radius:50%;
+  background:rgba(255,255,255,.16);
+}
+.header-title{font-size:34px;font-weight:900;letter-spacing:1px;position:relative;z-index:1}
+.header-sub{margin-top:8px;opacity:.92;font-size:15px;position:relative;z-index:1}
+.card{
+  background:var(--card);
+  border:1px solid rgba(226,232,240,.86);
+  border-radius:24px;
+  padding:22px;
+  margin-top:18px;
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(10px);
+}
+.card h3{margin:0 0 18px;font-size:21px;display:flex;align-items:center;gap:9px}
+.card h3:before{content:"";width:9px;height:24px;border-radius:999px;background:linear-gradient(var(--primary),var(--primary2))}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+label{display:block;font-size:14px;color:var(--muted);font-weight:700;margin-bottom:7px}
+input,select{
+  width:100%;
+  padding:12px 13px;
+  box-sizing:border-box;
+  border:1px solid #cbd5e1;
+  border-radius:14px;
+  outline:none;
+  background:#fff;
+  font-size:16px;
+  transition:.2s;
+}
+input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
+button{
+  border:0;
+  border-radius:14px;
+  padding:12px 18px;
+  margin:4px;
+  cursor:pointer;
+  color:#fff;
+  font-weight:800;
+  background:linear-gradient(135deg,var(--primary),#1d4ed8);
+  box-shadow:0 10px 20px rgba(37,99,235,.22);
+  transition:.18s;
+}
+button:hover{transform:translateY(-1px);filter:brightness(1.03)}
+button:active{transform:translateY(0)}
+.btn-secondary{background:linear-gradient(135deg,#0f766e,#14b8a6);box-shadow:0 10px 20px rgba(20,184,166,.22)}
+.btn-danger{background:linear-gradient(135deg,#dc2626,#b91c1c);box-shadow:0 10px 20px rgba(220,38,38,.18)}
+#msg{font-weight:800;color:#16a34a;margin-left:8px}
+.toolbar{display:flex;gap:8px;align-items:end;flex-wrap:wrap}
+.toolbar .month{min-width:260px;flex:1}
+.table-wrap{overflow:auto;border-radius:18px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;background:#fff;min-width:900px}
+th,td{border-bottom:1px solid var(--line);padding:12px 10px;text-align:center;vertical-align:middle}
+th{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;position:sticky;top:0;z-index:2;font-size:14px}
+tr:hover td{background:#f8fafc}
+.thumb{max-width:90px;max-height:68px;cursor:pointer;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.badge{display:inline-flex;align-items:center;gap:6px;background:#ecfeff;color:#0f766e;border:1px solid #99f6e4;border-radius:999px;padding:7px 12px;font-weight:800}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:9998;padding:20px}
+.modal img{max-width:94%;max-height:92%;display:block;margin:2% auto;border-radius:16px;box-shadow:0 20px 80px rgba(0,0,0,.55)}
+.pdf-page{width:190mm;min-height:277mm;background:#fff;padding:10mm;box-sizing:border-box;border-radius:4px;margin:12px auto;box-shadow:0 8px 22px rgba(15,23,42,.08)}
+.pdf-map{width:16.98cm;height:10.78cm;object-fit:cover;display:block;margin:10px auto;border-radius:6px}
+.no-map{width:16.98cm;height:10.78cm;border:1px dashed #999;display:flex;align-items:center;justify-content:center;margin:10px auto;color:#777}
+@media(max-width:720px){body{padding:14px}.header{padding:22px}.header-title{font-size:28px}.card{padding:18px}.login-box{padding:26px}}
+
+/* ===== A4 列印固定每頁 2 筆：2026 修正版 ===== */
+.pdf-page{
+  width:190mm;
+  height:277mm;
+  min-height:277mm;
+  background:#fff;
+  padding:0 8mm 0 8mm;
+  box-sizing:border-box;
+  border-radius:4px;
+  margin:12px auto;
+  box-shadow:0 8px 22px rgba(15,23,42,.08);
+  overflow:hidden;
+}
+.trip-record{
+  height:136mm;
+  box-sizing:border-box;
+  padding:6mm 0 3mm 0;
+  border-bottom:1px solid #d1d5db;
+  break-inside:avoid;
+  page-break-inside:avoid;
+  overflow:hidden;
+}
+.trip-record:nth-child(2){
+  border-bottom:0;
+}
+.trip-record h3{
+  margin:0 0 4mm 0;
+  font-size:24px;font-weight:900;
+  line-height:1.25;
+}
+.trip-info{
+  font-size:14px;
+  line-height:1.5;
+  margin-bottom:3mm;
+}
+.pdf-map{
+  width:150mm;
+  height:78mm;
+  object-fit:contain;
+  display:block;
+  margin:2mm auto 0 auto;
+  border-radius:3px;
+}
+.no-map{
+  width:150mm;
+  height:78mm;
+  border:1px dashed #999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:2mm auto 0 auto;
+  color:#777;
+  font-size:14px;
+}
+@media print{
+  html,body{
+    margin:0!important;
+    padding:0!important;
+    background:#fff!important;
+  }
+  .pdf-page{
+    margin:0!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    page-break-after:always;
+    break-after:page;
+  }
+  .pdf-page:last-child{
+    page-break-after:auto;
+    break-after:auto;
+  }
+}
+
+</style>
+</head>
+<body class="locked">
+
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-icon">✓</div>
+    <h1>出差紀錄系統</h1>
+    <p>請先輸入密碼後才能進入網站</p>
+    <input type="password" id="passwordInput" inputmode="numeric" maxlength="4" placeholder="****" autocomplete="off">
+    <br><br>
+    <button style="width:100%;font-size:17px" onclick="checkPassword()">進入系統</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<div class="app" id="app" style="display:none">
+  <div class="header">
+    <div class="header-title">出差紀錄系統</div>
+    <div class="header-sub">里程、雜費、圖片與列印紀錄管理</div>
+  </div>
+
+  <div class="card">
+    <h3>新增 / 編輯</h3>
+    <div class="grid">
+      <div><label>日期</label><input type="date" id="date"></div>
+      <div><label>交通工具</label><select id="vehicle"><option value="2">機車（2元/公里）</option><option value="3">汽車（3元/公里）</option></select></div>
+      <div><label>公里數</label><input id="km" type="number" step="0.1" placeholder="請輸入公里數"></div>
+      <div><label>雜費</label><select id="misc"><option>50</option><option>90</option><option>100</option><option>180</option></select></div>
+    </div>
+    <br>
+    <label>上傳地圖 / 照片</label><input type="file" id="photo" accept="image/*">
+    <br><br>
+    <button onclick="saveRecord()">儲存紀錄</button>
+    <span id="msg"></span>
+  </div>
+
+  <div class="card">
+    <h3>月份查詢</h3>
+    <div class="toolbar">
+      <div class="month"><label>選擇月份</label><input type="month" id="monthFilter"></div>
+      <button onclick="loadRecords()">查詢</button>
+      <button class="btn-secondary" onclick="printPreview()">列印</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div id="count" class="badge">共 0 筆</div><br><br>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>編號</th><th>日期</th><th>工具</th><th>公里</th><th>里程費</th><th>雜費</th><th>合計</th><th>圖片</th><th>編輯</th><th>刪除</th></tr></thead>
+        <tbody id="tb"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>列印預覽</h3>
+    <div id="pdfPreview" style="background:#fff;border-radius:18px;padding:8px"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="this.style.display='none'"><img id="bigImg"></div>
+
+<script>
+const SITE_PASSWORD = '3011';
+let db, editId=null;
+
+function unlockSite(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.body.classList.remove('locked');
+  initSystem();
+}
+function checkPassword(){
+  const input=document.getElementById('passwordInput');
+  if(input.value===SITE_PASSWORD){
+    sessionStorage.setItem('trip_login_ok','1');
+    unlockSite();
+  }else{
+    document.getElementById('loginError').innerText='密碼錯誤，請重新輸入';
+    input.value='';
+    input.focus();
+  }
+}
+document.getElementById('passwordInput').addEventListener('keydown',e=>{if(e.key==='Enter')checkPassword();});
+window.addEventListener('load',()=>{
+  if(sessionStorage.getItem('trip_login_ok')==='1') unlockSite();
+  else document.getElementById('passwordInput').focus();
+});
+
+function initSystem(){
+  if(db) return;
+  setToday();
+  const req=indexedDB.open('TripProDB',1);
+  req.onupgradeneeded=e=>{
+    const db=e.target.result;
+    if(!db.objectStoreNames.contains('records')) db.createObjectStore('records',{keyPath:'id',autoIncrement:true});
+  };
+  req.onsuccess=e=>{db=e.target.result;loadRecords();};
+}
+function setToday(){document.getElementById('date').value=new Date().toISOString().split('T')[0];}
+function roc(d){const x=new Date(d);return (x.getFullYear()-1911)+'年'+(x.getMonth()+1)+'月'+x.getDate()+'日';}
+function saveRecord(){
+ const file=document.getElementById('photo').files[0];
+ const finish=(img)=>{
+   let km=Math.round(parseFloat(document.getElementById('km').value||0));
+   let rate=parseInt(document.getElementById('vehicle').value);
+   let mileage=km<15?0:km*rate;
+   const data={date:date.value,vehicle:rate==2?'機車':'汽車',rate,km,mileage,misc:parseInt(misc.value),image:img||''};
+   const tx=db.transaction(['records'],'readwrite');
+   const store=tx.objectStore('records');
+   if(editId){data.id=editId;store.put(data);}else{store.add(data);}
+   tx.oncomplete=()=>{editId=null;msg.innerText='✓ 儲存成功';photo.value='';km.value='';setToday();loadRecords();setTimeout(()=>msg.innerText='',1800);};
+ };
+ if(file){const r=new FileReader();r.onload=e=>finish(e.target.result);r.readAsDataURL(file);}else{finish('');}
+}
+function loadRecords(){
+ if(!db) return;
+ const tx=db.transaction(['records'],'readonly');
+ const store=tx.objectStore('records');
+ const req=store.getAll();
+ req.onsuccess=()=>{
+   let rows=req.result.sort((a,b)=>String(a.date).localeCompare(String(b.date)));
+   const f=monthFilter.value;
+   if(f) rows=rows.filter(x=>x.date.startsWith(f));
+   count.innerHTML='共 '+rows.length+' 筆';
+   tb.innerHTML='';
+   if(document.getElementById('pdfPreview')) document.getElementById('pdfPreview').innerHTML='';
+   let previewHtml='';
+   rows.forEach((r,i)=>{
+     if(i%2===0) previewHtml += `<div class="pdf-page">`;
+     previewHtml += `
+       <div class="trip-record">
+         <h3>${i+1}. ${roc(r.date)}</h3>
+         <div class="trip-info">
+           <div><b>行駛：</b>${r.km<15?'未達15公里 = 0元':r.km+'公里 × '+r.rate+'元 = '+r.mileage+'元'}</div>
+           <div style="margin-top:8px"><b>雜費：</b>${r.misc}元</div>
+         </div>
+         ${r.image?'<img class="pdf-map" src="'+r.image+'">':'<div class="no-map">【未上傳地圖】</div>'}
+       </div>`;
+     if(i%2===1 || i===rows.length-1) previewHtml += `</div>`;
+     const total=r.mileage+r.misc;
+     tb.innerHTML+=`<tr><td>${i+1}</td><td>${roc(r.date)}</td><td>${r.vehicle}</td><td>${r.km}</td><td>${r.km<15?'未達15公里=0元':r.km+'×'+r.rate+'='+r.mileage}</td><td>${r.misc}</td><td><b>${total}</b></td><td>${r.image?'<img class="thumb" src="'+r.image+'" onclick="showImg(\''+r.image+'\')">':''}</td><td><button onclick="editRec(${r.id})">編輯</button></td><td><button class="btn-danger" onclick="delRec(${r.id})">刪除</button></td></tr>`;
+   });
+   if(document.getElementById('pdfPreview')) document.getElementById('pdfPreview').innerHTML=previewHtml;
+ };
+}
+function showImg(src){bigImg.src=src;modal.style.display='block';}
+function editRec(id){const tx=db.transaction(['records'],'readonly');tx.objectStore('records').get(id).onsuccess=e=>{const r=e.target.result;editId=r.id;date.value=r.date;km.value=r.km;misc.value=r.misc;vehicle.value=r.rate;window.scrollTo({top:0,behavior:'smooth'});};}
+function delRec(id){if(!confirm('確定刪除?')) return;const tx=db.transaction(['records'],'readwrite');tx.objectStore('records').delete(id);tx.oncomplete=loadRecords;}
+
+function printPreview(){
+ const content=document.getElementById('pdfPreview').innerHTML;
+ if(!content.trim()){alert('沒有可列印的資料');return;}
+ const printCss = `
+  @page{size:A4 portrait;margin:0}
+  *{box-sizing:border-box}
+  html,body{margin:0!important;padding:0!important;background:#fff!important;font-family:"Microsoft JhengHei",Arial,sans-serif;color:#111827}
+  .pdf-page{width:210mm;height:297mm;padding:6mm 10mm 6mm 10mm;margin:0;overflow:hidden;page-break-after:always;break-after:page;background:#fff}
+  .pdf-page:last-child{page-break-after:auto;break-after:auto}
+  .trip-record{height:142mm;padding:2mm 0 3mm 0;border-bottom:1px solid #d1d5db;overflow:hidden;page-break-inside:avoid;break-inside:avoid}
+  .trip-record:nth-child(2){border-bottom:0}
+  .trip-record h3{margin:0 0 5mm 0;font-size:18px;line-height:1.25;font-weight:800}
+  .trip-info{font-size:14px;line-height:1.45;margin-bottom:2mm}
+  .pdf-map{width:150mm;height:78mm;object-fit:contain;display:block;margin:2mm auto 0 auto;border-radius:2px}
+  .no-map{width:150mm;height:78mm;border:1px dashed #999;display:flex;align-items:center;justify-content:center;margin:2mm auto 0 auto;color:#777;font-size:14px}
+ `;
+ const win=window.open('');
+ win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>列印</title><style>'+printCss+'</style></head><body>'+content+'</body></html>');
+ win.document.close();
+ win.focus();
+ setTimeout(()=>win.print(),600);
+}
+</script>
+</body>
+</html>
